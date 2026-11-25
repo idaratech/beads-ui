@@ -213,4 +213,56 @@ describe('list adapters for subscription types', () => {
       expect(res.error.message).toMatch(/Unknown subscription type/);
     }
   });
+
+  test('issue-detail copies labels from bd list --parent onto parent-child dependents', async () => {
+    /** @type {import('vitest').Mock} */ (runBdJson)
+      .mockResolvedValueOnce({
+        code: 0,
+        stdoutJson: {
+          id: 'EP-1',
+          title: 'Epic',
+          dependents: [
+            { id: 'EP-1.1', title: 'Slice', dependency_type: 'parent-child' },
+            { id: 'X-9', title: 'Blocker', dependency_type: 'blocks' }
+          ]
+        }
+      })
+      .mockResolvedValueOnce({
+        code: 0,
+        stdoutJson: [{ id: 'EP-1.1', labels: ['wave-1', 'prd-206'] }]
+      });
+    const res = await fetchListForSubscription({
+      type: 'issue-detail',
+      params: { id: 'EP-1' }
+    });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(runBdJson).toHaveBeenNthCalledWith(
+      2,
+      ['list', '--json', '--tree=false', '--limit', '0', '--all', '--parent', 'EP-1'],
+      expect.anything()
+    );
+    const deps = /** @type {any} */ (res.items[0]).dependents;
+    expect(deps[0].labels).toEqual(['wave-1', 'prd-206']);
+    expect(deps[1].labels).toBeUndefined();
+  });
+
+  test('issue-detail keeps dependents when the label lookup fails', async () => {
+    /** @type {import('vitest').Mock} */ (runBdJson)
+      .mockResolvedValueOnce({
+        code: 0,
+        stdoutJson: {
+          id: 'EP-1',
+          dependents: [{ id: 'EP-1.1', dependency_type: 'parent-child' }]
+        }
+      })
+      .mockResolvedValueOnce({ code: 1, stderr: 'boom' });
+    const res = await fetchListForSubscription({
+      type: 'issue-detail',
+      params: { id: 'EP-1' }
+    });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(/** @type {any} */ (res.items[0]).dependents[0].labels).toBeUndefined();
+  });
 });

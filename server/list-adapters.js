@@ -226,6 +226,9 @@ export async function fetchListForSubscription(spec, options = {}) {
     }
 
     const items = normalizeIssueList(raw);
+    if (String(spec.type) === 'issue-detail') {
+      await attachDependentLabels(items, options);
+    }
     return { ok: true, items };
   } catch (err) {
     log('bd invocation failed for %o (args=%o): %o', spec, args, err);
@@ -237,6 +240,64 @@ export async function fetchListForSubscription(spec, options = {}) {
           (err && /** @type {any} */ (err).message) || 'bd invocation failed'
       }
     };
+  }
+}
+
+/**
+ * `bd show --include-dependents` lists an epic's children without their
+ * labels. Fetch the children once with `bd list --parent` (which carries
+ * labels) and copy the labels onto the matching dependents, so the epics
+ * view can show them. Best effort: a failure leaves the dependents as they
+ * were.
+ *
+ * @param {Array<Record<string, unknown>>} items
+ * @param {{ cwd?: string, priority?: 'interactive' | 'background' }} options
+ */
+async function attachDependentLabels(items, options) {
+  for (const item of items) {
+    const dependents = Array.isArray(item.dependents) ? item.dependents : [];
+    const children = dependents.filter(
+      (d) =>
+        d &&
+        typeof d === 'object' &&
+        String(/** @type {any} */ (d).dependency_type || '') === 'parent-child'
+    );
+    if (children.length === 0) {
+      continue;
+    }
+    try {
+      const res = await runBdJson(
+        [
+          'list',
+          '--json',
+          '--tree=false',
+          '--limit',
+          '0',
+          '--all',
+          '--parent',
+          String(item.id)
+        ],
+        { cwd: options.cwd, priority: options.priority }
+      );
+      if (!res || res.code !== 0 || !Array.isArray(res.stdoutJson)) {
+        continue;
+      }
+      /** @type {Map<string, string[]>} */
+      const labels_by_id = new Map();
+      for (const row of res.stdoutJson) {
+        if (row && typeof row === 'object' && Array.isArray(row.labels)) {
+          labels_by_id.set(String(row.id), row.labels);
+        }
+      }
+      for (const child of children) {
+        const labels = labels_by_id.get(String(/** @type {any} */ (child).id));
+        if (labels && !Array.isArray(/** @type {any} */ (child).labels)) {
+          /** @type {any} */ (child).labels = labels;
+        }
+      }
+    } catch (err) {
+      log('label enrichment failed for %s: %o', item.id, err);
+    }
   }
 }
 
