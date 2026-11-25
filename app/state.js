@@ -2,6 +2,7 @@
  * Minimal app state store with subscription.
  */
 import { debug } from './utils/logging.js';
+import { normalizeLabelFilters, sameLabelFilters } from './utils/labels.js';
 import { normalizeStatusFilters, sameStatusFilters } from './utils/status.js';
 
 /**
@@ -13,7 +14,7 @@ import { normalizeStatusFilters, sameStatusFilters } from './utils/status.js';
  * `['ready']` or a subset of the stored statuses. An empty selection means
  * "all issues".
  *
- * @typedef {{ status: StatusFilter[], search: string, type: string }} Filters
+ * @typedef {{ status: StatusFilter[], search: string, type: string, labels: string[] }} Filters
  */
 
 /**
@@ -62,7 +63,8 @@ export function createStore(initial = {}) {
       status: normalizeStatusFilters(initial.filters?.status),
       search: initial.filters?.search ?? '',
       type:
-        typeof initial.filters?.type === 'string' ? initial.filters?.type : ''
+        typeof initial.filters?.type === 'string' ? initial.filters?.type : '',
+      labels: normalizeLabelFilters(initial.filters?.labels)
     },
     board: {
       closed_filter:
@@ -111,7 +113,11 @@ export function createStore(initial = {}) {
           status:
             patch.filters && 'status' in patch.filters
               ? normalizeStatusFilters(patch.filters.status)
-              : state.filters.status
+              : state.filters.status,
+          labels:
+            patch.filters && 'labels' in patch.filters
+              ? normalizeLabelFilters(patch.filters.labels)
+              : state.filters.labels
         },
         board: { ...state.board, ...(patch.board || {}) },
         workspace: {
@@ -135,6 +141,7 @@ export function createStore(initial = {}) {
         sameStatusFilters(next.filters.status, state.filters.status) &&
         next.filters.search === state.filters.search &&
         next.filters.type === state.filters.type &&
+        sameLabelFilters(next.filters.labels, state.filters.labels) &&
         next.board.closed_filter === state.board.closed_filter &&
         !workspace_changed
       ) {
