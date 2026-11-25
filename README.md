@@ -6,14 +6,14 @@ Fork of [mantoni/beads-ui](https://github.com/mantoni/beads-ui) 0.12.6 with:
 - **Wave filter** next to Status and Types (union: W1 + W2 shows both). Clicking a chip toggles it.
 - **Live refresh on Dolt workspaces**: `.beads/` is watched recursively, so `bd update` shows without a reload.
 
-Branch `feat/labels-column-filter` holds the changes; `main` tracks upstream.
+All changes are on `main`; `upstream` is mantoni/beads-ui.
 
 ## Use it as your `bdui`
 
 ```sh
 git clone git@github.com:idaratech/beads-ui.git ~/Desktop/work/tools/beads-ui
 cd ~/Desktop/work/tools/beads-ui
-git checkout feat/labels-column-filter
+
 npm install
 npm run build
 npm link            # global `bdui` now resolves to this checkout
