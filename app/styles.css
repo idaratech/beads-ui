@@ -2264,3 +2264,43 @@ html[data-theme='dark'] {
 .dependent-count:hover {
   color: var(--fg);
 }
+
+/* Wave column: compact chips, wrap when a row carries several */
+.wave-col {
+  white-space: normal;
+}
+.label-chip {
+  display: inline-block;
+  padding: 0 7px;
+  line-height: 18px;
+  height: 18px;
+  margin: 1px 4px 1px 0;
+  border-radius: var(--badge-radius);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+  color: color-mix(in srgb, var(--fg, currentColor) 80%, var(--accent, #4a7));
+  background: color-mix(in srgb, var(--panel-bg, transparent) 85%, var(--accent, #4a7));
+  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+.label-chip--button {
+  cursor: pointer;
+}
+.label-chip--button:hover,
+.label-chip--button:focus {
+  outline: none;
+  border-color: color-mix(in srgb, currentColor 60%, transparent);
+}
+.filter-dropdown__clear {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}

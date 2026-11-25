@@ -1,3 +1,29 @@
+# Idaratech fork
+
+Fork of [mantoni/beads-ui](https://github.com/mantoni/beads-ui) 0.12.6 with:
+
+- **Wave column** in the Issues table: `W0`, `W1`, … from the issue's `wave-N` label.
+- **Wave filter** next to Status and Types (union: W1 + W2 shows both). Clicking a chip toggles it.
+- **Live refresh on Dolt workspaces**: `.beads/` is watched recursively, so `bd update` shows without a reload.
+
+Branch `feat/labels-column-filter` holds the changes; `main` tracks upstream.
+
+## Use it as your `bdui`
+
+```sh
+git clone git@github.com:idaratech/beads-ui.git ~/Desktop/work/tools/beads-ui
+cd ~/Desktop/work/tools/beads-ui
+git checkout feat/labels-column-filter
+npm install
+npm run build
+npm link            # global `bdui` now resolves to this checkout
+cd <workspace>/orch-docs && bdui restart --open
+```
+
+`npm i -g beads-ui` undoes the link. After pulling changes: `npm run build && bdui restart`.
+
+---
+
 <h1 align="center">
   Beads UI
 </h1>

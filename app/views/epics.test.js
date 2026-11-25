@@ -86,7 +86,8 @@ describe('views/epics', () => {
               title: 'Alpha',
               status: 'open',
               priority: 1,
-              issue_type: 'task'
+              issue_type: 'task',
+              labels: ['prd-206', 'wave-1']
             },
             {
               id: 'UI-3',
@@ -105,6 +106,16 @@ describe('views/epics', () => {
     // After expansion, only non-closed child should be present
     const rows = mount.querySelectorAll('tr.epic-row');
     expect(rows.length).toBe(2);
+    // Wave column: header present, chip shows the wave label only, as W{n}
+    const headers = Array.from(mount.querySelectorAll('thead th')).map((th) =>
+      (th.textContent || '').trim()
+    );
+    expect(headers).toContain('Wave');
+    const chips = Array.from(rows[0].querySelectorAll('.label-chip')).map(
+      (c) => (c.textContent || '').trim()
+    );
+    expect(chips).toEqual(['W1']);
+    expect(rows[1].querySelectorAll('.label-chip').length).toBe(0);
     rows[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(navCalls[0]).toBe('UI-2');
   });

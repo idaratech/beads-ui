@@ -3,6 +3,7 @@
  */
 import { html } from 'lit-html';
 import { createIssueIdRenderer } from '../utils/issue-id-renderer.js';
+import { waveLabels, waveText } from '../utils/labels.js';
 import { ISSUE_TYPES, typeLabel } from '../utils/issue-type.js';
 import { emojiForPriority } from '../utils/priority-badge.js';
 import { priority_levels } from '../utils/priority.js';
@@ -13,7 +14,7 @@ import {
 } from '../utils/status.js';
 
 /**
- * @typedef {{ id: string, title?: string, status?: string, priority?: number, issue_type?: string, assignee?: string, dependency_count?: number, dependent_count?: number }} IssueRowData
+ * @typedef {{ id: string, title?: string, status?: string, priority?: number, issue_type?: string, assignee?: string, labels?: string[], dependency_count?: number, dependent_count?: number }} IssueRowData
  */
 
 /**
@@ -25,7 +26,9 @@ import {
  *   onUpdate: (id: string, patch: { title?: string, assignee?: string, status?: SettableStatus, priority?: number, issue_type?: string }) => Promise<void>,
  *   requestRender: () => void,
  *   getSelectedId?: () => string | null,
- *   row_class?: string
+ *   row_class?: string,
+ *   show_wave?: boolean,
+ *   onWaveClick?: (label: string) => void
  * }} options
  * @returns {(it: IssueRowData) => import('lit-html').TemplateResult<1>}
  */
@@ -35,6 +38,37 @@ export function createIssueRowRenderer(options) {
   const request_render = options.requestRender;
   const get_selected_id = options.getSelectedId || (() => null);
   const row_class = options.row_class || 'issue-row';
+  const show_wave = options.show_wave === true;
+  const on_wave_click = options.onWaveClick;
+
+  /**
+   * Wave cell: one chip per `wave-N` label, shown as `W{N}`. With a click
+   * handler the chip filters the list by that wave; without one it is text.
+   *
+   * @param {IssueRowData} it
+   */
+  function waveCell(it) {
+    return html`<td role="gridcell" class="wave-col">
+      ${waveLabels(it).map((label) =>
+        on_wave_click
+          ? html`<button
+              type="button"
+              class="label-chip label-chip--button"
+              title="Filter by ${label}"
+              @click=${
+                /** @param {MouseEvent} e */ (e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  on_wave_click(label);
+                }
+              }
+            >
+              ${waveText(label)}
+            </button>`
+          : html`<span class="label-chip">${waveText(label)}</span>`
+      )}
+    </td>`;
+  }
 
   /** @type {Set<string>} */
   const editing = new Set();
@@ -134,7 +168,12 @@ export function createIssueRowRenderer(options) {
   function makeRowClick(id) {
     return (ev) => {
       const el = /** @type {HTMLElement|null} */ (ev.target);
-      if (el && (el.tagName === 'INPUT' || el.tagName === 'SELECT')) {
+      if (
+        el &&
+        (el.tagName === 'INPUT' ||
+          el.tagName === 'SELECT' ||
+          el.tagName === 'BUTTON')
+      ) {
         return;
       }
       navigate(id);
@@ -171,6 +210,7 @@ export function createIssueRowRenderer(options) {
         </select>
       </td>
       <td role="gridcell">${editableText(it.id, 'title', it.title || '')}</td>
+      ${show_wave ? waveCell(it) : ''}
       <td role="gridcell">
         <select
           class="badge-select badge--status is-${cur_status}"

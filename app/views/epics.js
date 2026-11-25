@@ -78,7 +78,8 @@ export function createEpicsView(
     onUpdate: updateInline,
     requestRender: doRender,
     getSelectedId: () => null,
-    row_class: 'epic-row'
+    row_class: 'epic-row',
+    show_wave: true
   });
 
   function doRender() {
@@ -143,6 +144,7 @@ export function createEpicsView(
                         <col style="width: 100px" />
                         <col style="width: 120px" />
                         <col />
+                        <col style="width: 70px" />
                         <col style="width: 120px" />
                         <col style="width: 160px" />
                         <col style="width: 130px" />
@@ -152,6 +154,7 @@ export function createEpicsView(
                           <th>ID</th>
                           <th>Type</th>
                           <th>Title</th>
+                          <th>Wave</th>
                           <th>Status</th>
                           <th>Assignee</th>
                           <th>Priority</th>
