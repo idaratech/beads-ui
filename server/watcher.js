@@ -67,11 +67,12 @@ export function watchDb(root_dir, onChange, options = {}) {
       );
     }
 
-    // (Re)create watcher
+    // (Re)create watcher. A directory target (Dolt) keeps its data in
+    // nested folders, so a non-recursive watch would miss every write.
     try {
       watcher = fs.watch(
         current_dir,
-        { persistent: true },
+        { persistent: true, recursive: current_file === '' },
         (event_type, filename) => {
           if (current_file && filename && String(filename) !== current_file) {
             return;

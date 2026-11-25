@@ -11,6 +11,7 @@ import { createHashRouter, parseHash, parseView } from './router.js';
 import { createStore } from './state.js';
 import { createActivityIndicator } from './utils/activity-indicator.js';
 import { debug } from './utils/logging.js';
+import { normalizeLabelFilters } from './utils/labels.js';
 import { normalizeStatusFilters } from './utils/status.js';
 import { showToast } from './utils/toast.js';
 import { createBoardView } from './views/board.js';
@@ -351,9 +352,9 @@ export function bootstrap(root_element) {
       };
       client.onConnection(onConn);
     }
-    // Load persisted filters (status/search/type) from localStorage
-    /** @type {{ status: StatusFilter[], search: string, type: string }} */
-    let persisted_filters = { status: [], search: '', type: '' };
+    // Load persisted filters (status/search/type/labels) from localStorage
+    /** @type {{ status: StatusFilter[], search: string, type: string, labels: string[] }} */
+    let persisted_filters = { status: [], search: '', type: '', labels: [] };
     try {
       const raw = window.localStorage.getItem('beads-ui.filters');
       if (raw) {
@@ -379,7 +380,8 @@ export function bootstrap(root_element) {
             // entirely invalid value degrades to "all issues".
             status: normalizeStatusFilters(obj.status),
             search: typeof obj.search === 'string' ? obj.search : '',
-            type: parsed_type
+            type: parsed_type,
+            labels: normalizeLabelFilters(obj.labels)
           };
         }
       }
@@ -514,7 +516,8 @@ export function bootstrap(root_element) {
       const data = {
         status: normalizeStatusFilters(s.filters.status),
         search: s.filters.search,
-        type: typeof s.filters.type === 'string' ? s.filters.type : ''
+        type: typeof s.filters.type === 'string' ? s.filters.type : '',
+        labels: normalizeLabelFilters(s.filters.labels)
       };
       const next_json = JSON.stringify(data);
       if (next_json !== persisted_filters_json) {

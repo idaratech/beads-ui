@@ -13,7 +13,7 @@ import {
 } from '../utils/status.js';
 
 /**
- * @typedef {{ id: string, title?: string, status?: string, priority?: number, issue_type?: string, assignee?: string, dependency_count?: number, dependent_count?: number }} IssueRowData
+ * @typedef {{ id: string, title?: string, status?: string, priority?: number, issue_type?: string, assignee?: string, labels?: string[], dependency_count?: number, dependent_count?: number }} IssueRowData
  */
 
 /**
@@ -25,7 +25,9 @@ import {
  *   onUpdate: (id: string, patch: { title?: string, assignee?: string, status?: SettableStatus, priority?: number, issue_type?: string }) => Promise<void>,
  *   requestRender: () => void,
  *   getSelectedId?: () => string | null,
- *   row_class?: string
+ *   row_class?: string,
+ *   show_labels?: boolean,
+ *   onLabelClick?: (label: string) => void
  * }} options
  * @returns {(it: IssueRowData) => import('lit-html').TemplateResult<1>}
  */
@@ -35,6 +37,38 @@ export function createIssueRowRenderer(options) {
   const request_render = options.requestRender;
   const get_selected_id = options.getSelectedId || (() => null);
   const row_class = options.row_class || 'issue-row';
+  const show_labels = options.show_labels === true;
+  const on_label_click = options.onLabelClick;
+
+  /**
+   * Labels cell: one chip per label. With a click handler the chip filters
+   * the list by that label; without one it is plain text.
+   *
+   * @param {IssueRowData} it
+   */
+  function labelsCell(it) {
+    const labels = Array.isArray(it.labels) ? it.labels : [];
+    return html`<td role="gridcell" class="labels-col">
+      ${labels.map((label) =>
+        on_label_click
+          ? html`<button
+              type="button"
+              class="label-chip label-chip--button"
+              title="Filter by label ${label}"
+              @click=${
+                /** @param {MouseEvent} e */ (e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  on_label_click(label);
+                }
+              }
+            >
+              ${label}
+            </button>`
+          : html`<span class="label-chip">${label}</span>`
+      )}
+    </td>`;
+  }
 
   /** @type {Set<string>} */
   const editing = new Set();
@@ -134,7 +168,12 @@ export function createIssueRowRenderer(options) {
   function makeRowClick(id) {
     return (ev) => {
       const el = /** @type {HTMLElement|null} */ (ev.target);
-      if (el && (el.tagName === 'INPUT' || el.tagName === 'SELECT')) {
+      if (
+        el &&
+        (el.tagName === 'INPUT' ||
+          el.tagName === 'SELECT' ||
+          el.tagName === 'BUTTON')
+      ) {
         return;
       }
       navigate(id);
@@ -171,6 +210,7 @@ export function createIssueRowRenderer(options) {
         </select>
       </td>
       <td role="gridcell">${editableText(it.id, 'title', it.title || '')}</td>
+      ${show_labels ? labelsCell(it) : ''}
       <td role="gridcell">
         <select
           class="badge-select badge--status is-${cur_status}"

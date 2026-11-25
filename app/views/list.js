@@ -8,6 +8,7 @@ import { createListSelectors } from '../data/list-selectors.js';
 import { cmpClosedDesc } from '../data/sort.js';
 import { ISSUE_TYPES, typeLabel } from '../utils/issue-type.js';
 import { issueHashFor } from '../utils/issue-url.js';
+import { collectLabels, normalizeLabelFilters } from '../utils/labels.js';
 import { debug } from '../utils/logging.js';
 import {
   FILTERABLE_STATUSES,
@@ -64,12 +65,15 @@ export function createListView(
   let issues_cache = [];
   /** @type {string[]} */
   let type_filters = [];
+  /** @type {string[]} */
+  let label_filters = [];
   /** @type {string | null} */
   let selected_id = store ? store.getState().selected_id : null;
   /** @type {null | (() => void)} */
   let unsubscribe = null;
   let status_dropdown_open = false;
   let type_dropdown_open = false;
+  let label_dropdown_open = false;
 
   /**
    * Normalize legacy string filter to array format.
@@ -94,7 +98,9 @@ export function createListView(
     onUpdate: updateInline,
     requestRender: doRender,
     getSelectedId: () => selected_id,
-    row_class: 'issue-row'
+    row_class: 'issue-row',
+    show_labels: true,
+    onLabelClick: (label) => toggleLabelFilter(label)
   });
 
   /**
@@ -177,6 +183,37 @@ export function createListView(
   };
 
   /**
+   * Toggle a label filter. Labels narrow the list as a union, like types:
+   * picking `wave-1` and `wave-2` shows both waves.
+   *
+   * @param {string} label
+   */
+  const toggleLabelFilter = (label) => {
+    if (label_filters.includes(label)) {
+      label_filters = label_filters.filter((l) => l !== label);
+    } else {
+      label_filters = [...label_filters, label];
+    }
+    log('label toggle %s -> %o', label, label_filters);
+    if (store) {
+      store.setState({ filters: { labels: label_filters } });
+    }
+    doRender();
+  };
+
+  /**
+   * Clear every label filter.
+   */
+  const clearLabelFilters = () => {
+    if (label_filters.length === 0) return;
+    label_filters = [];
+    if (store) {
+      store.setState({ filters: { labels: [] } });
+    }
+    doRender();
+  };
+
+  /**
    * Toggle status dropdown open/closed.
    *
    * @param {Event} e
@@ -185,6 +222,7 @@ export function createListView(
     e.stopPropagation();
     status_dropdown_open = !status_dropdown_open;
     type_dropdown_open = false;
+    label_dropdown_open = false;
     doRender();
   };
 
@@ -197,6 +235,20 @@ export function createListView(
     e.stopPropagation();
     type_dropdown_open = !type_dropdown_open;
     status_dropdown_open = false;
+    label_dropdown_open = false;
+    doRender();
+  };
+
+  /**
+   * Toggle label dropdown open/closed.
+   *
+   * @param {Event} e
+   */
+  const toggleLabelDropdown = (e) => {
+    e.stopPropagation();
+    label_dropdown_open = !label_dropdown_open;
+    status_dropdown_open = false;
+    type_dropdown_open = false;
     doRender();
   };
 
@@ -221,6 +273,7 @@ export function createListView(
       status_filters = normalizeStatusFilters(s.filters.status);
       search_text = s.filters.search || '';
       type_filters = normalizeTypeFilter(s.filters.type);
+      label_filters = normalizeLabelFilters(s.filters.labels);
     }
   }
   // Initial values are reflected via bound `.value` in the template
@@ -256,6 +309,21 @@ export function createListView(
       filtered = filtered.filter((it) =>
         type_filters.includes(String(it.issue_type || ''))
       );
+    }
+    if (label_filters.length > 0) {
+      filtered = filtered.filter((it) => {
+        const labels = Array.isArray(it.labels) ? it.labels : [];
+        return labels.some((l) => label_filters.includes(String(l)));
+      });
+    }
+    // Labels offered in the dropdown: every label in the loaded list, plus
+    // any selected label that no loaded issue carries any more, so it can
+    // still be unticked.
+    const label_options = collectLabels(issues_cache);
+    for (const l of label_filters) {
+      if (!label_options.includes(l)) {
+        label_options.push(l);
+      }
     }
     // Sorting: closed list is a special case → sort by closed_at desc only
     if (
@@ -349,6 +417,43 @@ export function createListView(
             )}
           </div>
         </div>
+        <div class="filter-dropdown ${label_dropdown_open ? 'is-open' : ''}">
+          <button
+            class="filter-dropdown__trigger"
+            @click=${toggleLabelDropdown}
+          >
+            ${getDropdownDisplayText(label_filters, 'Labels', (l) => l)}
+            <span class="filter-dropdown__arrow">▾</span>
+          </button>
+          <div class="filter-dropdown__menu">
+            ${label_options.length === 0
+              ? html`<div class="filter-dropdown__group-label">
+                  No labels
+                </div>`
+              : label_options.map(
+                  (l) => html`
+                    <label class="filter-dropdown__option">
+                      <input
+                        type="checkbox"
+                        .checked=${label_filters.includes(l)}
+                        @change=${() => toggleLabelFilter(l)}
+                      />
+                      ${l}
+                    </label>
+                  `
+                )}
+            ${label_filters.length > 0
+              ? html`<div class="filter-dropdown__divider" role="separator"></div>
+                  <button
+                    type="button"
+                    class="filter-dropdown__option filter-dropdown__clear"
+                    @click=${clearLabelFilters}
+                  >
+                    Clear labels
+                  </button>`
+              : ''}
+          </div>
+        </div>
         <input
           type="search"
           placeholder="Search…"
@@ -366,12 +471,13 @@ export function createListView(
                 class="table"
                 role="grid"
                 aria-rowcount=${String(filtered.length)}
-                aria-colcount="6"
+                aria-colcount="8"
               >
                 <colgroup>
                   <col style="width: 100px" />
                   <col style="width: 120px" />
                   <col />
+                  <col style="width: 180px" />
                   <col style="width: 120px" />
                   <col style="width: 160px" />
                   <col style="width: 130px" />
@@ -382,6 +488,7 @@ export function createListView(
                     <th role="columnheader">ID</th>
                     <th role="columnheader">Type</th>
                     <th role="columnheader">Title</th>
+                    <th role="columnheader">Labels</th>
                     <th role="columnheader">Status</th>
                     <th role="columnheader">Assignee</th>
                     <th role="columnheader">Priority</th>
