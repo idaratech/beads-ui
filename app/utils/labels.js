@@ -64,3 +64,53 @@ export function collectLabels(issues) {
   }
   return Array.from(set).sort((x, y) => x.localeCompare(y));
 }
+
+/** Labels that name a wave look like `wave-1`. */
+export const WAVE_PREFIX = 'wave-';
+
+/**
+ * Is this label a wave label?
+ *
+ * @param {unknown} label
+ * @returns {label is string}
+ */
+export function isWaveLabel(label) {
+  return typeof label === 'string' && label.startsWith(WAVE_PREFIX);
+}
+
+/**
+ * Short display text for a wave label: `wave-1` → `W1`.
+ *
+ * @param {string} label
+ * @returns {string}
+ */
+export function waveText(label) {
+  return `W${label.slice(WAVE_PREFIX.length)}`;
+}
+
+/**
+ * The wave labels of an issue, in label order.
+ *
+ * @param {{ labels?: unknown }} issue
+ * @returns {string[]}
+ */
+export function waveLabels(issue) {
+  return Array.isArray(issue.labels) ? issue.labels.filter(isWaveLabel) : [];
+}
+
+/**
+ * Distinct wave labels of a list, sorted by wave number.
+ *
+ * @param {Array<{ labels?: unknown }>} issues
+ * @returns {string[]}
+ */
+export function collectWaves(issues) {
+  return collectLabels(issues)
+    .filter(isWaveLabel)
+    .sort((a, b) => {
+      const na = Number(a.slice(WAVE_PREFIX.length));
+      const nb = Number(b.slice(WAVE_PREFIX.length));
+      if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
+      return a.localeCompare(b);
+    });
+}

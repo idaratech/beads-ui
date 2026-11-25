@@ -8,7 +8,11 @@ import { createListSelectors } from '../data/list-selectors.js';
 import { cmpClosedDesc } from '../data/sort.js';
 import { ISSUE_TYPES, typeLabel } from '../utils/issue-type.js';
 import { issueHashFor } from '../utils/issue-url.js';
-import { collectLabels, normalizeLabelFilters } from '../utils/labels.js';
+import {
+  collectWaves,
+  normalizeLabelFilters,
+  waveText
+} from '../utils/labels.js';
 import { debug } from '../utils/logging.js';
 import {
   FILTERABLE_STATUSES,
@@ -99,8 +103,8 @@ export function createListView(
     requestRender: doRender,
     getSelectedId: () => selected_id,
     row_class: 'issue-row',
-    show_labels: true,
-    onLabelClick: (label) => toggleLabelFilter(label)
+    show_wave: true,
+    onWaveClick: (label) => toggleLabelFilter(label)
   });
 
   /**
@@ -183,8 +187,8 @@ export function createListView(
   };
 
   /**
-   * Toggle a label filter. Labels narrow the list as a union, like types:
-   * picking `wave-1` and `wave-2` shows both waves.
+   * Toggle a wave filter (stored as its `wave-N` label). Waves narrow the
+   * list as a union, like types: picking W1 and W2 shows both waves.
    *
    * @param {string} label
    */
@@ -316,10 +320,10 @@ export function createListView(
         return labels.some((l) => label_filters.includes(String(l)));
       });
     }
-    // Labels offered in the dropdown: every label in the loaded list, plus
-    // any selected label that no loaded issue carries any more, so it can
-    // still be unticked.
-    const label_options = collectLabels(issues_cache);
+    // Waves offered in the dropdown: every `wave-N` label in the loaded
+    // list, plus any selected wave that no loaded issue carries any more, so
+    // it can still be unticked.
+    const label_options = collectWaves(issues_cache);
     for (const l of label_filters) {
       if (!label_options.includes(l)) {
         label_options.push(l);
@@ -422,13 +426,13 @@ export function createListView(
             class="filter-dropdown__trigger"
             @click=${toggleLabelDropdown}
           >
-            ${getDropdownDisplayText(label_filters, 'Labels', (l) => l)}
+            ${getDropdownDisplayText(label_filters, 'Wave', waveText)}
             <span class="filter-dropdown__arrow">▾</span>
           </button>
           <div class="filter-dropdown__menu">
             ${label_options.length === 0
               ? html`<div class="filter-dropdown__group-label">
-                  No labels
+                  No waves
                 </div>`
               : label_options.map(
                   (l) => html`
@@ -438,7 +442,7 @@ export function createListView(
                         .checked=${label_filters.includes(l)}
                         @change=${() => toggleLabelFilter(l)}
                       />
-                      ${l}
+                      ${waveText(l)}
                     </label>
                   `
                 )}
@@ -449,7 +453,7 @@ export function createListView(
                     class="filter-dropdown__option filter-dropdown__clear"
                     @click=${clearLabelFilters}
                   >
-                    Clear labels
+                    Clear wave
                   </button>`
               : ''}
           </div>
@@ -477,7 +481,7 @@ export function createListView(
                   <col style="width: 100px" />
                   <col style="width: 120px" />
                   <col />
-                  <col style="width: 180px" />
+                  <col style="width: 70px" />
                   <col style="width: 120px" />
                   <col style="width: 160px" />
                   <col style="width: 130px" />
@@ -488,7 +492,7 @@ export function createListView(
                     <th role="columnheader">ID</th>
                     <th role="columnheader">Type</th>
                     <th role="columnheader">Title</th>
-                    <th role="columnheader">Labels</th>
+                    <th role="columnheader">Wave</th>
                     <th role="columnheader">Status</th>
                     <th role="columnheader">Assignee</th>
                     <th role="columnheader">Priority</th>

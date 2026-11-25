@@ -1,8 +1,12 @@
 import { describe, expect, test } from 'vitest';
 import {
   collectLabels,
+  collectWaves,
+  isWaveLabel,
   normalizeLabelFilters,
-  sameLabelFilters
+  sameLabelFilters,
+  waveLabels,
+  waveText
 } from './labels.js';
 
 describe('utils/labels', () => {
@@ -31,5 +35,19 @@ describe('utils/labels', () => {
         {}
       ])
     ).toEqual(['prd-206', 'wave-1', 'wave-2']);
+  });
+
+  test('wave helpers recognise, render and order wave labels', () => {
+    expect(isWaveLabel('wave-1')).toBe(true);
+    expect(isWaveLabel('prd-206')).toBe(false);
+    expect(waveText('wave-10')).toBe('W10');
+    expect(waveLabels({ labels: ['prd-206', 'wave-2'] })).toEqual(['wave-2']);
+    expect(
+      collectWaves([
+        { labels: ['wave-10'] },
+        { labels: ['wave-2', 'prd-206'] },
+        { labels: ['wave-1'] }
+      ])
+    ).toEqual(['wave-1', 'wave-2', 'wave-10']);
   });
 });

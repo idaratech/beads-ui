@@ -96,61 +96,64 @@ async function setup(store = createStore()) {
   return { mount, view, store };
 }
 
-describe('list view labels', () => {
-  test('renders a Labels column with one chip per label', async () => {
+describe('list view wave column and filter', () => {
+  test('renders a Wave column showing only the wave label as W{n}', async () => {
     const { mount } = await setup();
     const headers = Array.from(mount.querySelectorAll('thead th')).map((th) =>
       (th.textContent || '').trim()
     );
-    expect(headers).toContain('Labels');
+    expect(headers).toContain('Wave');
+    expect(headers).not.toContain('Labels');
     const first_row = mount.querySelector('tr[data-issue-id="x-1"]');
     const chips = Array.from(
       first_row?.querySelectorAll('.label-chip') || []
     ).map((c) => (c.textContent || '').trim());
-    expect(chips).toEqual(['prd-206', 'wave-1']);
+    expect(chips).toEqual(['W1']);
+    const no_wave_row = mount.querySelector('tr[data-issue-id="x-3"]');
+    expect(no_wave_row?.querySelectorAll('.label-chip').length).toBe(0);
   });
 
-  test('offers every label present in the list', async () => {
+  test('offers only the waves present in the list, in wave order', async () => {
     const { mount } = await setup();
     const options = Array.from(
       labelDropdown(mount).querySelectorAll('.filter-dropdown__option')
     ).map((o) => (o.textContent || '').trim());
-    expect(options).toEqual(['prd-206', 'wave-1', 'wave-2']);
+    expect(options).toEqual(['W1', 'W2']);
   });
 
-  test('filters rows by a selected label and persists it in the store', async () => {
+  test('filters rows by a selected wave and persists its label in the store', async () => {
     const { mount, store } = await setup();
-    toggleLabel(mount, 'wave-1');
+    toggleLabel(mount, 'W1');
     expect(rowIds(mount)).toEqual(['x-1']);
     expect(store.getState().filters.labels).toEqual(['wave-1']);
   });
 
-  test('two labels are a union', async () => {
+  test('two waves are a union', async () => {
     const { mount } = await setup();
-    toggleLabel(mount, 'wave-1');
-    toggleLabel(mount, 'wave-2');
+    toggleLabel(mount, 'W1');
+    toggleLabel(mount, 'W2');
     expect(rowIds(mount).sort()).toEqual(['x-1', 'x-2']);
   });
 
-  test('clicking a chip toggles that label filter', async () => {
+  test('clicking a wave chip toggles that wave filter', async () => {
     const { mount } = await setup();
     const chip = /** @type {HTMLButtonElement} */ (
       mount.querySelector('tr[data-issue-id="x-2"] .label-chip--button')
     );
-    expect((chip.textContent || '').trim()).toBe('prd-206');
+    expect((chip.textContent || '').trim()).toBe('W2');
     chip.click();
-    expect(rowIds(mount).sort()).toEqual(['x-1', 'x-2']);
+    expect(rowIds(mount)).toEqual(['x-2']);
     chip.click();
     expect(rowIds(mount).length).toBe(3);
   });
 
-  test('applies a persisted label filter on first render', async () => {
+  test('applies a persisted wave filter on first render', async () => {
     const store = createStore({ filters: { labels: ['wave-2'] } });
     const { mount } = await setup(store);
     expect(rowIds(mount)).toEqual(['x-2']);
     const trigger = labelDropdown(mount).querySelector(
       '.filter-dropdown__trigger'
     );
-    expect((trigger?.textContent || '').trim()).toContain('Labels: wave-2');
+    expect((trigger?.textContent || '').trim()).toContain('Wave: W2');
   });
 });

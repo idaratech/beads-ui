@@ -2265,8 +2265,8 @@ html[data-theme='dark'] {
   color: var(--fg);
 }
 
-/* Labels column: compact chips, wrap when a row carries several */
-.labels-col {
+/* Wave column: compact chips, wrap when a row carries several */
+.wave-col {
   white-space: normal;
 }
 .label-chip {

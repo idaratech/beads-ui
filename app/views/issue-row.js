@@ -3,6 +3,7 @@
  */
 import { html } from 'lit-html';
 import { createIssueIdRenderer } from '../utils/issue-id-renderer.js';
+import { waveLabels, waveText } from '../utils/labels.js';
 import { ISSUE_TYPES, typeLabel } from '../utils/issue-type.js';
 import { emojiForPriority } from '../utils/priority-badge.js';
 import { priority_levels } from '../utils/priority.js';
@@ -26,8 +27,8 @@ import {
  *   requestRender: () => void,
  *   getSelectedId?: () => string | null,
  *   row_class?: string,
- *   show_labels?: boolean,
- *   onLabelClick?: (label: string) => void
+ *   show_wave?: boolean,
+ *   onWaveClick?: (label: string) => void
  * }} options
  * @returns {(it: IssueRowData) => import('lit-html').TemplateResult<1>}
  */
@@ -37,35 +38,34 @@ export function createIssueRowRenderer(options) {
   const request_render = options.requestRender;
   const get_selected_id = options.getSelectedId || (() => null);
   const row_class = options.row_class || 'issue-row';
-  const show_labels = options.show_labels === true;
-  const on_label_click = options.onLabelClick;
+  const show_wave = options.show_wave === true;
+  const on_wave_click = options.onWaveClick;
 
   /**
-   * Labels cell: one chip per label. With a click handler the chip filters
-   * the list by that label; without one it is plain text.
+   * Wave cell: one chip per `wave-N` label, shown as `W{N}`. With a click
+   * handler the chip filters the list by that wave; without one it is text.
    *
    * @param {IssueRowData} it
    */
-  function labelsCell(it) {
-    const labels = Array.isArray(it.labels) ? it.labels : [];
-    return html`<td role="gridcell" class="labels-col">
-      ${labels.map((label) =>
-        on_label_click
+  function waveCell(it) {
+    return html`<td role="gridcell" class="wave-col">
+      ${waveLabels(it).map((label) =>
+        on_wave_click
           ? html`<button
               type="button"
               class="label-chip label-chip--button"
-              title="Filter by label ${label}"
+              title="Filter by ${label}"
               @click=${
                 /** @param {MouseEvent} e */ (e) => {
                   e.stopPropagation();
                   e.preventDefault();
-                  on_label_click(label);
+                  on_wave_click(label);
                 }
               }
             >
-              ${label}
+              ${waveText(label)}
             </button>`
-          : html`<span class="label-chip">${label}</span>`
+          : html`<span class="label-chip">${waveText(label)}</span>`
       )}
     </td>`;
   }
@@ -210,7 +210,7 @@ export function createIssueRowRenderer(options) {
         </select>
       </td>
       <td role="gridcell">${editableText(it.id, 'title', it.title || '')}</td>
-      ${show_labels ? labelsCell(it) : ''}
+      ${show_wave ? waveCell(it) : ''}
       <td role="gridcell">
         <select
           class="badge-select badge--status is-${cur_status}"
